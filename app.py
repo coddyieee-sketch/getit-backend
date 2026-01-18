@@ -12,24 +12,17 @@ load_dotenv()
 app = Flask(__name__)
 from flask_cors import CORS
 
+ALLOWED_ORIGINS = {
+    "https://portfolio-indhirajith.vercel.app",
+}
+
 CORS(
     app,
-    resources={
-        r"/*": {
-            "origins": [
-                "https://getit-frontend.vercel.app",
-                "https://portfolio-indhirajith.vercel.app"
-            ]
-        }
-    }
+    origins=ALLOWED_ORIGINS,
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "https://portfolio-indhirajith.vercel.app"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    return response
 
 
 
@@ -144,12 +137,17 @@ def auto_reply_html(name: str, intent: str) -> str:
 </html>
 """
 
+@app.route("/contact", methods=["OPTIONS"])
+def contact_preflight():
+    return "", 204
+
+
 
 # ---------- Contact Endpoint ----------
 @app.route("/contact", methods=["POST"])
 def contact():
     try:
-        data = request.get_json()
+        data = request.get_json(force=True, silent=True) or {}
 
         name = data.get("name")
         email = data.get("email")
