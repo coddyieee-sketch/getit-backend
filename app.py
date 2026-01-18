@@ -28,21 +28,23 @@ SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 EMAIL_FROM = os.getenv("EMAIL_FROM")          # Verified SendGrid sender
 RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")  # Your inbox
 
-# ---------- Health Check ----------
+# ---------------- Health Check ----------------
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
 
 
-# ---------- Helper: Detect Message Type ----------
+# ---------------- Intent Detection ----------------
 def detect_intent(message: str) -> str:
     msg = message.lower()
 
     recruiter_keywords = [
-        "job", "role", "intern", "internship", "position", "hiring", "career"
+        "job", "role", "intern", "internship",
+        "position", "hiring", "career"
     ]
     client_keywords = [
-        "project", "client", "freelance", "budget", "timeline", "collaboration"
+        "project", "client", "freelance",
+        "budget", "timeline", "collaboration"
     ]
 
     if any(word in msg for word in recruiter_keywords):
@@ -52,80 +54,85 @@ def detect_intent(message: str) -> str:
     return "general"
 
 
-# ---------- Helper: Auto Reply HTML ----------
-def auto_reply_html(name: str, intent: str) -> str:
+# ---------------- Intent UI Metadata ----------------
+def intent_ui(intent: str, message: str):
+    urgent_keywords = ["urgent", "asap", "immediate", "priority"]
+
+    is_urgent = (
+        intent == "recruiter"
+        or any(word in message.lower() for word in urgent_keywords)
+    )
 
     if intent == "recruiter":
+        color = "#2563eb"  # Blue
+        label = "RECRUITER"
+    elif intent == "client":
+        color = "#16a34a"  # Green
+        label = "CLIENT"
+    else:
+        color = "#6b7280"  # Gray
+        label = "GENERAL"
+
+    return color, label, is_urgent
+
+
+# ---------------- Auto Reply HTML ----------------
+def auto_reply_html(name: str, intent: str) -> str:
+    if intent == "recruiter":
         headline = "Thank you for reaching out"
-        body = f"""
+        body = """
         I appreciate you contacting me regarding an opportunity.
-        I’m actively exploring roles in <strong>AI, machine learning,
-        and data-driven engineering</strong> with a focus on real-world impact.
+        I’m actively exploring roles in <strong>AI, Machine Learning,
+        and Data Engineering</strong>.
         <br><br>
         I’ll review the details and get back to you within <strong>24 hours</strong>.
         """
 
     elif intent == "client":
         headline = "Thanks for getting in touch"
-        body = f"""
+        body = """
         Thank you for reaching out regarding a potential project or collaboration.
         <br><br>
-        I specialize in building <strong>AI-driven, scalable, and data-backed solutions</strong>.
-        If helpful, feel free to reply with goals, timelines, or constraints.
+        I specialize in building <strong>AI-driven, scalable solutions</strong>.
+        Please feel free to share timelines or requirements.
         """
 
     else:
         headline = "Thank you for reaching out"
-        body = f"""
+        body = """
         I’ve received your message and will review it shortly.
         <br><br>
-        You’re welcome to reply to this email if you’d like to add more details.
+        You’re welcome to reply with any additional details.
         """
 
     return f"""
 <!DOCTYPE html>
 <html>
-  <body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px;">
+  <body style="background:#f8fafc;font-family:Arial,sans-serif;padding:24px;">
+    <table width="100%" align="center">
       <tr>
         <td align="center">
-          <table width="100%" cellpadding="0" cellspacing="0"
-                 style="max-width:560px;background:#ffffff;border-radius:12px;
-                        padding:28px;color:#0f172a;
-                        box-shadow:0 12px 32px rgba(0,0,0,0.08);">
-
+          <table width="560" style="background:#ffffff;
+               padding:28px;border-radius:12px;
+               box-shadow:0 12px 32px rgba(0,0,0,0.08);">
             <tr>
-              <td style="font-size:20px;font-weight:600;color:#0ea5e9;padding-bottom:12px;">
+              <td style="font-size:20px;font-weight:600;color:#0ea5e9;">
                 {headline}
               </td>
             </tr>
-
             <tr>
-              <td style="font-size:14.5px;line-height:1.7;color:#334155;">
+              <td style="padding-top:14px;font-size:14.5px;color:#334155;line-height:1.7;">
                 Hi <strong>{name}</strong>,<br><br>
                 {body}
               </td>
             </tr>
-
             <tr>
-              <td style="padding:18px 0;">
-                <div style="background:#f1f5f9;border-left:4px solid #0ea5e9;
-                            padding:14px;border-radius:6px;font-size:13.5px;">
-                  ⏱ Typical response time: within 24 hours (business days)<br>
-                  📩 You can reply directly to this email to continue the conversation.
-                </div>
-              </td>
-            </tr>
-
-            <tr>
-              <td style="font-size:13px;color:#475569;line-height:1.6;">
+              <td style="padding-top:20px;font-size:13px;color:#475569;">
                 Regards,<br>
                 <strong>P Indhirajith</strong><br>
-                AI & Data Science Engineer<br>
-                <span style="color:#64748b;">Portfolio Contact · Automated Reply</span>
+                AI & Data Science Engineer
               </td>
             </tr>
-
           </table>
         </td>
       </tr>
@@ -134,10 +141,12 @@ def auto_reply_html(name: str, intent: str) -> str:
 </html>
 """
 
+
 # ---------------- OPTIONS Preflight ----------------
 @app.route("/contact", methods=["OPTIONS"])
 def contact_preflight():
     return "", 204
+
 
 # ---------------- Contact Endpoint ----------------
 @app.route("/contact", methods=["POST"])
@@ -153,45 +162,87 @@ def contact():
             return jsonify({"error": "All fields are required"}), 400
 
         intent = detect_intent(message)
+        color, label, is_urgent = intent_ui(intent, message)
+
         timestamp = datetime.now().strftime("%d %b %Y, %I:%M %p IST")
 
-        # ---------------- SendGrid Emails ----------------
-        try:
-            sg = SendGridAPIClient(SENDGRID_API_KEY)
+        urgent_subject = "[URGENT] " if is_urgent else ""
+        urgent_badge = """
+        <span style="background:#dc2626;color:#fff;
+        padding:4px 10px;border-radius:999px;
+        font-size:12px;font-weight:600;margin-left:8px;">
+        🚨 URGENT
+        </span>
+        """ if is_urgent else ""
 
-            # Admin email
-            admin_email = Mail(
-                from_email=EMAIL_FROM,
-                to_emails=RECEIVER_EMAIL,
-                subject=f"📩 New Portfolio Inquiry | {name}",
-                html_content=f"""
-                <h3>New Contact Message</h3>
+        reply_link = f"""
+        mailto:{email}
+        ?subject=Re:%20Your%20message%20to%20Indhirajith
+        &body=Hi%20{name},%0D%0A%0D%0AThank%20you%20for%20reaching%20out.
+        """
+
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+
+        # ---------------- Admin Email ----------------
+        admin_email = Mail(
+            from_email=EMAIL_FROM,
+            to_emails=RECEIVER_EMAIL,
+            subject=f"{urgent_subject}📩 New Portfolio Inquiry | {name}",
+            html_content=f"""
+            <div style="font-family:Arial,sans-serif;background:#f8fafc;padding:24px;">
+              <div style="max-width:600px;background:#ffffff;
+                   padding:24px;border-radius:12px;
+                   box-shadow:0 10px 28px rgba(0,0,0,0.08);">
+
+                <h2>
+                  New Contact Message {urgent_badge}
+                </h2>
+
+                <span style="background:{color};
+                color:#fff;padding:6px 12px;
+                border-radius:999px;font-size:12px;font-weight:600;">
+                  {label}
+                </span>
+
                 <p><strong>Name:</strong> {name}</p>
                 <p><strong>Email:</strong> {email}</p>
                 <p><strong>Time:</strong> {timestamp}</p>
-                <p><strong>Message:</strong><br>{message}</p>
-                <p><strong>Intent:</strong> {intent.upper()}</p>
-                """
-            )
-            sg.send(admin_email)
 
-            # Auto-reply email
-            user_email = Mail(
-                from_email=EMAIL_FROM,
-                to_emails=email,
-                subject="Thanks for contacting me",
-                html_content=auto_reply_html(name, intent)
-            )
-            sg.send(user_email)
+                <p><strong>Message:</strong></p>
+                <div style="background:#f1f5f9;padding:14px;border-radius:8px;">
+                  {message}
+                </div>
 
-        except Exception as mail_error:
-            print("SENDGRID ERROR:", mail_error)
+                <div style="text-align:center;margin-top:24px;">
+                  <a href="{reply_link}"
+                     style="background:#0ea5e9;color:#fff;
+                     padding:12px 20px;border-radius:8px;
+                     text-decoration:none;font-weight:600;">
+                    📨 Reply
+                  </a>
+                </div>
+
+              </div>
+            </div>
+            """
+        )
+        sg.send(admin_email)
+
+        # ---------------- Auto Reply ----------------
+        user_email = Mail(
+            from_email=EMAIL_FROM,
+            to_emails=email,
+            subject="Thanks for contacting me",
+            html_content=auto_reply_html(name, intent)
+        )
+        sg.send(user_email)
 
         return jsonify({"success": True}), 200
 
     except Exception as e:
-        print("CONTACT ERROR:", e)
+        print("ERROR:", e)
         return jsonify({"error": "Server error"}), 500
+
 
 # ---------------- Local Run ----------------
 if __name__ == "__main__":
