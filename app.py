@@ -18,7 +18,7 @@ CORS(
         r"/*": {
             "origins": [
                 "https://getit-frontend.vercel.app",
-                "https://portfolio-indhirajith.vercel.app/"
+                "https://portfolio-indhirajith.vercel.app"
             ]
         }
     }
@@ -26,7 +26,7 @@ CORS(
 
 @app.after_request
 def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = "https://portfolio-indhirajith.vercel.app/"
+    response.headers["Access-Control-Allow-Origin"] = "https://portfolio-indhirajith.vercel.app"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
