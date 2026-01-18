@@ -1,20 +1,20 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import smtplib
-from email.message import EmailMessage
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 import os
 from dotenv import load_dotenv
 from datetime import datetime
 
-# Load environment variables
+# ---------------- Load Environment ----------------
 load_dotenv()
 
 app = Flask(__name__)
-from flask_cors import CORS
 
-ALLOWED_ORIGINS = {
+# ---------------- CORS ----------------
+ALLOWED_ORIGINS = [
     "https://portfolio-indhirajith.vercel.app",
-}
+]
 
 CORS(
     app,
@@ -23,13 +23,10 @@ CORS(
     allow_headers=["Content-Type", "Authorization"],
 )
 
-
-
-
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASS = os.getenv("EMAIL_PASS")
-RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")
-
+# ---------------- Environment Variables ----------------
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+EMAIL_FROM = os.getenv("EMAIL_FROM")          # Verified SendGrid sender
+RECEIVER_EMAIL = os.getenv("RECEIVER_EMAIL")  # Your inbox
 
 # ---------- Health Check ----------
 @app.route("/health", methods=["GET"])
@@ -137,13 +134,12 @@ def auto_reply_html(name: str, intent: str) -> str:
 </html>
 """
 
+# ---------------- OPTIONS Preflight ----------------
 @app.route("/contact", methods=["OPTIONS"])
 def contact_preflight():
     return "", 204
 
-
-
-# ---------- Contact Endpoint ----------
+# ---------------- Contact Endpoint ----------------
 @app.route("/contact", methods=["POST"])
 def contact():
     try:
@@ -156,160 +152,47 @@ def contact():
         if not name or not email or not message:
             return jsonify({"error": "All fields are required"}), 400
 
-        timestamp = datetime.now().strftime("%d %b %Y, %I:%M %p IST")
         intent = detect_intent(message)
+        timestamp = datetime.now().strftime("%d %b %Y, %I:%M %p IST")
 
-        # ---------- Admin Email ----------
-        admin_msg = EmailMessage()
-        admin_msg["Subject"] = f"📩 New Portfolio Inquiry | {name}"
-        admin_msg["From"] = EMAIL_USER
-        admin_msg["To"] = RECEIVER_EMAIL
-        admin_msg["Reply-To"] = email
-        intent_upper = intent.upper()
-        is_urgent = intent_upper in ["RECRUITER", "CLIENT"]
-        intent_styles = {
-             "RECRUITER": ("#e0f2fe", "#0369a1"),  # Blue
-             "CLIENT": ("#dcfce7", "#166534"),     # Green
-             "GENERAL": ("#f1f5f9", "#475569")     # Gray
-             }
-        bg_color, text_color = intent_styles.get(intent_upper, intent_styles["GENERAL"])
-        admin_msg.set_content(f"""
-<!DOCTYPE html>
-<html>
-  <body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px;">
-      <tr>
-        <td align="center">
-
-          <table width="100%" cellpadding="0" cellspacing="0"
-                 style="max-width:640px;background:#ffffff;color:#0f172a;">
-
-            <!-- Header -->
-            <tr>
-              <td style="font-size:18px;font-weight:600;color:#0ea5e9;padding-bottom:18px;">
-                📩 New Portfolio Inquiry
-                {f'<span style="margin-left:8px;color:#dc2626;font-size:13px;font-weight:700;">🚨 URGENT</span>' if is_urgent else ''}
-              </td>
-            </tr>
-
-            <!-- Meta -->
-            <tr><td style="font-size:14px;padding-bottom:6px;"><strong>Name:</strong> {name}</td></tr>
-            <tr><td style="font-size:14px;padding-bottom:6px;"><strong>Email:</strong> {email}</td></tr>
-            <tr><td style="font-size:14px;padding-bottom:10px;"><strong>Received:</strong> {timestamp}</td></tr>
-
-            <!-- Intent Badge -->
-            <tr>
-              <td style="font-size:14px;padding-bottom:16px;">
-                <strong>Intent:</strong>
-                <span style="
-                  display:inline-block;
-                  padding:4px 10px;
-                  border-radius:999px;
-                  background:{bg_color};
-                  color:{text_color};
-                  font-size:12px;
-                  font-weight:700;
-                  margin-left:6px;
-                ">
-                  {intent_upper}
-                </span>
-              </td>
-            </tr>
-
-            <!-- Divider -->
-            <tr><td><div style="height:1px;background:#e5e7eb;margin:14px 0;"></div></td></tr>
-
-            <!-- Message -->
-            <tr>
-              <td style="font-size:15px;font-weight:600;padding-bottom:10px;">
-                Message
-              </td>
-            </tr>
-
-            <tr>
-              <td style="
-                background:#f8fafc;
-                border-radius:8px;
-                padding:16px;
-                font-size:14px;
-                white-space:pre-wrap;
-              ">
-{message}
-              </td>
-            </tr>
-
-            <!-- Divider -->
-            <tr><td><div style="height:1px;background:#e5e7eb;margin:18px 0;"></div></td></tr>
-
-            <!-- Actions -->
-            <tr>
-              <td>
-                <a href="mailto:{email}"
-                   style="
-                     display:inline-block;
-                     padding:10px 16px;
-                     background:#0ea5e9;
-                     color:#ffffff;
-                     border-radius:6px;
-                     font-size:13.5px;
-                     font-weight:600;
-                     text-decoration:none;
-                   ">
-                  Reply to {name}
-                </a>
-              </td>
-            </tr>
-
-            <!-- Footer -->
-            <tr>
-              <td style="padding-top:18px;font-size:12px;color:#64748b;">
-                Source: Portfolio Contact Form
-              </td>
-            </tr>
-
-          </table>
-
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>
-""", subtype="html")
-
-
-        # ---------- User Auto Reply ----------
-        user_msg = EmailMessage()
-        user_msg["Subject"] = "Thanks for contacting me — I’ll be in touch shortly"
-        user_msg["From"] = EMAIL_USER
-        user_msg["To"] = email
-
-        user_msg.set_content(
-            f"Hi {name},\n\nThanks for reaching out. I’ve received your message and will get back to you shortly.\n\nRegards,\nP Indhirajith"
-        )
-
-        user_msg.add_alternative(
-            auto_reply_html(name, intent),
-            subtype="html"
-        )
-
-        # ---------- Send Emails ----------
-        # ---------- Send Emails ----------
+        # ---------------- SendGrid Emails ----------------
         try:
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
-                server.starttls()
-                server.login(EMAIL_USER, EMAIL_PASS)
-                server.send_message(admin_msg)
-                server.send_message(user_msg)
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+
+            # Admin email
+            admin_email = Mail(
+                from_email=EMAIL_FROM,
+                to_emails=RECEIVER_EMAIL,
+                subject=f"📩 New Portfolio Inquiry | {name}",
+                html_content=f"""
+                <h3>New Contact Message</h3>
+                <p><strong>Name:</strong> {name}</p>
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Time:</strong> {timestamp}</p>
+                <p><strong>Message:</strong><br>{message}</p>
+                <p><strong>Intent:</strong> {intent.upper()}</p>
+                """
+            )
+            sg.send(admin_email)
+
+            # Auto-reply email
+            user_email = Mail(
+                from_email=EMAIL_FROM,
+                to_emails=email,
+                subject="Thanks for contacting me",
+                html_content=auto_reply_html(name, intent)
+            )
+            sg.send(user_email)
+
         except Exception as mail_error:
-            # Do NOT crash the request if email fails
-            print("SMTP ERROR:", mail_error)
+            print("SENDGRID ERROR:", mail_error)
 
         return jsonify({"success": True}), 200
 
     except Exception as e:
-        print("EMAIL ERROR:", e)
-        return jsonify({"error": "Failed to send email"}), 500
+        print("CONTACT ERROR:", e)
+        return jsonify({"error": "Server error"}), 500
 
-
+# ---------------- Local Run ----------------
 if __name__ == "__main__":
     app.run()
