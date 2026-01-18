@@ -10,7 +10,27 @@ from datetime import datetime
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+from flask_cors import CORS
+
+CORS(
+    app,
+    resources={
+        r"/*": {
+            "origins": [
+                "https://portfolio-indhirajith.vercel.app/"
+            ]
+        }
+    }
+)
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "https://portfolio-indhirajith.vercel.app/"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
+
+
 
 EMAIL_USER = os.getenv("EMAIL_USER")
 EMAIL_PASS = os.getenv("EMAIL_PASS")
