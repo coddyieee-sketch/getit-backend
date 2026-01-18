@@ -293,11 +293,16 @@ def contact():
         )
 
         # ---------- Send Emails ----------
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(EMAIL_USER, EMAIL_PASS)
-            server.send_message(admin_msg)
-            server.send_message(user_msg)
+        # ---------- Send Emails ----------
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                server.starttls()
+                server.login(EMAIL_USER, EMAIL_PASS)
+                server.send_message(admin_msg)
+                server.send_message(user_msg)
+        except Exception as mail_error:
+            # Do NOT crash the request if email fails
+            print("SMTP ERROR:", mail_error)
 
         return jsonify({"success": True}), 200
 
