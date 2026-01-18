@@ -17,6 +17,7 @@ CORS(
     resources={
         r"/*": {
             "origins": [
+                "https://getit-frontend.vercel.app",
                 "https://portfolio-indhirajith.vercel.app/"
             ]
         }
