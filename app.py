@@ -5,7 +5,7 @@ from sendgrid.helpers.mail import Mail
 import os
 from dotenv import load_dotenv
 from datetime import datetime
-
+import pytz
 # ---------------- Load Environment ----------------
 load_dotenv()
 
@@ -180,7 +180,9 @@ def contact():
         intent = detect_intent(message)
         color, label, is_urgent = intent_ui(intent, message)
 
-        timestamp = datetime.now().strftime("%d %b %Y, %I:%M %p IST")
+        ist = pytz.timezone("Asia/Kolkata")
+        timestamp = datetime.now(ist).strftime("%d %b %Y, %I:%M %p IST")
+
 
         urgent_subject = "[URGENT] " if is_urgent else ""
         urgent_badge = """
