@@ -82,8 +82,8 @@ def auto_reply_html(name: str, intent: str) -> str:
         headline = "Thank you for reaching out"
         body = """
         I appreciate you contacting me regarding an opportunity.
-        I’m actively exploring roles in <strong>AI, Machine Learning,
-        and Data Engineering</strong>.
+        I’m actively exploring roles in <strong>AI, machine learning,
+        and data-driven engineering</strong> with a focus on real-world impact.
         <br><br>
         I’ll review the details and get back to you within <strong>24 hours</strong>.
         """
@@ -93,8 +93,8 @@ def auto_reply_html(name: str, intent: str) -> str:
         body = """
         Thank you for reaching out regarding a potential project or collaboration.
         <br><br>
-        I specialize in building <strong>AI-driven, scalable solutions</strong>.
-        Please feel free to share timelines or requirements.
+        I specialize in building <strong>AI-driven, scalable, and data-backed solutions</strong>.
+        If helpful, feel free to reply with goals, timelines, or constraints.
         """
 
     else:
@@ -102,37 +102,53 @@ def auto_reply_html(name: str, intent: str) -> str:
         body = """
         I’ve received your message and will review it shortly.
         <br><br>
-        You’re welcome to reply with any additional details.
+        You’re welcome to reply to this email if you’d like to add more details.
         """
 
     return f"""
 <!DOCTYPE html>
 <html>
-  <body style="background:#f8fafc;font-family:Arial,sans-serif;padding:24px;">
-    <table width="100%" align="center">
+  <body style="margin:0;padding:0;background:#f8fafc;font-family:Arial,Helvetica,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px;">
       <tr>
         <td align="center">
-          <table width="560" style="background:#ffffff;
-               padding:28px;border-radius:12px;
-               box-shadow:0 12px 32px rgba(0,0,0,0.08);">
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="max-width:560px;background:#ffffff;border-radius:12px;
+                        padding:28px;color:#0f172a;
+                        box-shadow:0 12px 32px rgba(0,0,0,0.08);">
+
             <tr>
-              <td style="font-size:20px;font-weight:600;color:#0ea5e9;">
+              <td style="font-size:20px;font-weight:600;color:#0ea5e9;padding-bottom:12px;">
                 {headline}
               </td>
             </tr>
+
             <tr>
-              <td style="padding-top:14px;font-size:14.5px;color:#334155;line-height:1.7;">
+              <td style="font-size:14.5px;line-height:1.7;color:#334155;">
                 Hi <strong>{name}</strong>,<br><br>
                 {body}
               </td>
             </tr>
+
             <tr>
-              <td style="padding-top:20px;font-size:13px;color:#475569;">
-                Regards,<br>
-                <strong>P Indhirajith</strong><br>
-                AI & Data Science Engineer
+              <td style="padding:18px 0;">
+                <div style="background:#f1f5f9;border-left:4px solid #0ea5e9;
+                            padding:14px;border-radius:6px;font-size:13.5px;">
+                  ⏱ Typical response time: within 24 hours (business days)<br>
+                  📩 You can reply directly to this email to continue the conversation.
+                </div>
               </td>
             </tr>
+
+            <tr>
+              <td style="font-size:13px;color:#475569;line-height:1.6;">
+                Regards,<br>
+                <strong>P Indhirajith</strong><br>
+                AI & Data Science Engineer<br>
+                <span style="color:#64748b;">Portfolio Contact · Automated Reply</span>
+              </td>
+            </tr>
+
           </table>
         </td>
       </tr>
